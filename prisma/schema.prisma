@@ -1,0 +1,71 @@
+// Prisma schema for MongoDB HRM database
+// Connects to process.env.DATABASE_URL (targeting HRM)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+}
+
+enum Role {
+  ADMIN
+  CLIENT
+  CANDIDATE
+}
+
+enum Stage {
+  APPLIED
+  SOURCED
+  INTERVIEWED
+  SHORTLISTED
+  PLACED
+}
+
+model User {
+  id    String @id @default(auto()) @map("_id") @db.ObjectId
+  email String @unique
+  password String
+  role  Role
+}
+
+model ClientCompany {
+  id            String @id @default(auto()) @map("_id") @db.ObjectId
+  name          String
+  contactPerson String
+  email         String
+  jobOrders     JobOrder[]
+}
+
+model JobOrder {
+  id              String @id @default(auto()) @map("_id") @db.ObjectId
+  clientCompanyId String
+  title           String
+  description     String
+  skillsRequired  String[]
+  vacanciesCount  Int
+  clientCompany   ClientCompany @relation(fields: [clientCompanyId], references: [id])
+  applications    Application[]
+}
+
+model Application {
+  id             String @id @default(auto()) @map("_id") @db.ObjectId
+  candidateName  String
+  candidateEmail String
+  jobOrderId     String
+  stage          Stage
+  jobOrder       JobOrder @relation(fields: [jobOrderId], references: [id])
+  interviews     Interview[]
+}
+
+model Interview {
+  id             String @id @default(auto()) @map("_id") @db.ObjectId
+  applicationId  String
+  dateTime       DateTime
+  notes          String
+  technicalScore Int
+  softScore      Int
+  status         String
+  application    Application @relation(fields: [applicationId], references: [id])
+}
