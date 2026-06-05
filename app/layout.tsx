@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Simple HRM",
-  description: "A local dummy-data HRM demo for candidates, HR teams, and clients.",
+  title: "HumanCapital HRM",
+  description: "An HRM for candidates, HR teams, and clients.",
 };
 
 export default function RootLayout({
