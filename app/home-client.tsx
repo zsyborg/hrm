@@ -1,330 +1,428 @@
 "use client";
 
-import React, { useState } from "react";
+import Image from "next/image";
+import { useMemo, useState } from "react";
 
-type PortalView = "admin" | "client" | "candidate";
+type View = "hr" | "candidate" | "client";
+type Stage = "Applied" | "Screening" | "Interview" | "Shortlisted" | "Rejected";
 
-type Stage = "APPLIED" | "SOURCED" | "INTERVIEWED" | "SHORTLISTED" | "PLACED";
-
-interface JobOrder {
+type Job = {
   id: string;
-  clientCompanyId: string;
   title: string;
-  description: string;
-  skillsRequired: string[];
-  vacanciesCount: number;
-}
+  client: string;
+  location: string;
+  type: string;
+  salary: string;
+  skills: string[];
+  summary: string;
+};
 
-interface Application {
+type Application = {
   id: string;
   candidateName: string;
-  candidateEmail: string;
-  jobOrderId: string;
-  stage: Stage | string;
-  jobOrder?: JobOrder;
+  email: string;
+  jobId: string;
+  stage: Stage;
+  resumeName: string;
+  experience: string;
+  fitScore: number;
+  appliedAt: string;
+};
+
+const stages: Stage[] = ["Applied", "Screening", "Interview", "Shortlisted", "Rejected"];
+
+const initialJobs: Job[] = [
+  {
+    id: "job-product-designer",
+    title: "Product Designer",
+    client: "Northstar Labs",
+    location: "Remote",
+    type: "Full time",
+    salary: "$82k - $104k",
+    skills: ["Figma", "UX Research", "Design Systems"],
+    summary: "Design hiring workflows and internal tools for a fast-growing SaaS team.",
+  },
+  {
+    id: "job-frontend-engineer",
+    title: "Frontend Engineer",
+    client: "BluePeak Retail",
+    location: "Bengaluru",
+    type: "Hybrid",
+    salary: "$70k - $95k",
+    skills: ["React", "TypeScript", "Next.js"],
+    summary: "Build high-quality customer dashboards and improve application performance.",
+  },
+  {
+    id: "job-people-ops",
+    title: "People Operations Lead",
+    client: "Meridian Health",
+    location: "Mumbai",
+    type: "Full time",
+    salary: "$58k - $72k",
+    skills: ["HRIS", "Onboarding", "Compliance"],
+    summary: "Own onboarding, employee lifecycle operations, and HR process reporting.",
+  },
+];
+
+const initialApplications: Application[] = [
+  {
+    id: "app-001",
+    candidateName: "Aarav Mehta",
+    email: "aarav.mehta@example.com",
+    jobId: "job-frontend-engineer",
+    stage: "Shortlisted",
+    resumeName: "Aarav-Mehta-Frontend.pdf",
+    experience: "5 years",
+    fitScore: 94,
+    appliedAt: "May 28",
+  },
+  {
+    id: "app-002",
+    candidateName: "Nisha Rao",
+    email: "nisha.rao@example.com",
+    jobId: "job-product-designer",
+    stage: "Interview",
+    resumeName: "Nisha-Rao-Portfolio.pdf",
+    experience: "4 years",
+    fitScore: 89,
+    appliedAt: "May 30",
+  },
+  {
+    id: "app-003",
+    candidateName: "Kabir Sethi",
+    email: "kabir.sethi@example.com",
+    jobId: "job-people-ops",
+    stage: "Screening",
+    resumeName: "Kabir-Sethi-HR.pdf",
+    experience: "7 years",
+    fitScore: 86,
+    appliedAt: "Jun 1",
+  },
+  {
+    id: "app-004",
+    candidateName: "Maya Iyer",
+    email: "maya.iyer@example.com",
+    jobId: "job-frontend-engineer",
+    stage: "Applied",
+    resumeName: "Maya-Iyer-React.pdf",
+    experience: "3 years",
+    fitScore: 78,
+    appliedAt: "Jun 2",
+  },
+];
+
+const viewLabels: Record<View, string> = {
+  hr: "HR workspace",
+  candidate: "Candidate portal",
+  client: "Client shortlist",
+};
+
+function findJob(jobs: Job[], id: string) {
+  return jobs.find((job) => job.id === id);
 }
 
-// Portal 1: HR Manager Admin Dashboard & Kanban
-function AdminDashboard({
-  applications,
-  onDrop,
-}: {
-  applications: Application[];
-  onDrop: (id: string, stage: Stage) => void;
-}) {
-  const [draggedAppId, setDraggedAppId] = useState<string | null>(null);
+function initials(name: string) {
+  return name
+    .split(" ")
+    .map((part) => part[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+}
 
-  const handleDragStart = (id: string) => setDraggedAppId(id);
+export default function HomePage() {
+  const [activeView, setActiveView] = useState<View>("hr");
+  const [jobs] = useState<Job[]>(initialJobs);
+  const [applications, setApplications] = useState<Application[]>(initialApplications);
+  const [selectedJobId, setSelectedJobId] = useState(initialJobs[0].id);
+  const [candidateName, setCandidateName] = useState("");
+  const [candidateEmail, setCandidateEmail] = useState("");
+  const [resumeName, setResumeName] = useState("");
+  const [experience, setExperience] = useState("");
 
-  const handleDrop = (stage: Stage) => {
-    if (draggedAppId) {
-      onDrop(draggedAppId, stage);
-    }
-    setDraggedAppId(null);
-  };
+  const shortlisted = applications.filter((application) => application.stage === "Shortlisted");
+  const selectedJob = findJob(jobs, selectedJobId) ?? jobs[0];
 
-  const stages: Stage[] = ["APPLIED", "SOURCED", "INTERVIEWED", "SHORTLISTED", "PLACED"];
-  const grouped = stages.reduce((acc, stage) => {
-    acc[stage] = applications.filter((a) => a.stage === stage);
-    return acc;
-  }, {} as Record<Stage, Application[]>);
+  const metrics = useMemo(
+    () => [
+      { label: "Open jobs", value: jobs.length.toString() },
+      { label: "Applications", value: applications.length.toString() },
+      { label: "Shortlisted", value: shortlisted.length.toString() },
+      { label: "Avg. fit score", value: `${Math.round(applications.reduce((sum, app) => sum + app.fitScore, 0) / applications.length)}%` },
+    ],
+    [applications, jobs.length, shortlisted.length],
+  );
+
+  function updateStage(id: string, stage: Stage) {
+    setApplications((current) =>
+      current.map((application) => (application.id === id ? { ...application, stage } : application)),
+    );
+  }
+
+  function applyForJob(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    const newApplication: Application = {
+      id: `app-${Date.now()}`,
+      candidateName: candidateName.trim(),
+      email: candidateEmail.trim(),
+      jobId: selectedJob.id,
+      stage: "Applied",
+      resumeName: resumeName || "Uploaded resume",
+      experience: experience.trim() || "Not specified",
+      fitScore: 74 + Math.floor(Math.random() * 18),
+      appliedAt: "Today",
+    };
+
+    setApplications((current) => [newApplication, ...current]);
+    setCandidateName("");
+    setCandidateEmail("");
+    setResumeName("");
+    setExperience("");
+  }
 
   return (
-    <div className="p-8 bg-slate-50 min-h-screen">
-      <div className="grid grid-cols-4 gap-4 mb-8">
-        <div className="bg-slate-800 text-white rounded-lg p-6 shadow">
-          <div className="text-2xl font-bold">{applications.length}</div>
-          <div className="text-slate-300">Total Candidates</div>
+    <main className="min-h-screen bg-[#f6f7f4] text-[#1d241f]">
+      <header className="border-b border-[#d9ded6] bg-white/90">
+        <div className="mx-auto flex max-w-7xl flex-col gap-4 px-5 py-5 sm:px-8 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-md bg-[#214538] text-sm font-bold text-white">
+              HR
+            </div>
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#687167]">Dummy data demo</p>
+              <h1 className="text-2xl font-semibold text-[#17201b]">Simple HRM</h1>
+            </div>
+          </div>
+          <nav className="grid grid-cols-3 rounded-md border border-[#cad1c8] bg-[#eef1eb] p-1 text-sm font-medium">
+            {(Object.keys(viewLabels) as View[]).map((view) => (
+              <button
+                key={view}
+                className={`rounded px-3 py-2 transition ${
+                  activeView === view ? "bg-white text-[#174f3d] shadow-sm" : "text-[#5f675f] hover:text-[#17201b]"
+                }`}
+                onClick={() => setActiveView(view)}
+                type="button"
+              >
+                {viewLabels[view]}
+              </button>
+            ))}
+          </nav>
         </div>
-        <div className="bg-slate-800 text-white rounded-lg p-6 shadow">
-          <div className="text-2xl font-bold">N/A</div>
-          <div className="text-slate-300">Active Job Orders</div>
+      </header>
+
+      <section className="mx-auto grid max-w-7xl gap-5 px-5 py-6 sm:px-8 lg:grid-cols-[1.1fr_0.9fr]">
+        <div className="grid gap-4 sm:grid-cols-4">
+          {metrics.map((metric) => (
+            <div key={metric.label} className="rounded-md border border-[#d7ddd3] bg-white p-4">
+              <p className="text-sm text-[#667064]">{metric.label}</p>
+              <p className="mt-2 text-2xl font-semibold text-[#17201b]">{metric.value}</p>
+            </div>
+          ))}
         </div>
-        <div className="bg-slate-800 text-white rounded-lg p-6 shadow">
-          <div className="text-2xl font-bold">{applications.filter((a) => a.stage === "SHORTLISTED").length}</div>
-          <div className="text-slate-300">Shortlisted</div>
+        <div className="flex items-center gap-4 rounded-md border border-[#d7ddd3] bg-white p-4">
+          <Image src="/file.svg" alt="" width={40} height={40} className="opacity-75" />
+          <div>
+            <p className="text-sm font-semibold text-[#17201b]">Local-only workflow</p>
+            <p className="text-sm text-[#667064]">Applications, resume names, shortlists, and client views use in-memory dummy data.</p>
+          </div>
         </div>
-        <div className="bg-slate-800 text-white rounded-lg p-6 shadow">
-          <div className="text-2xl font-bold">{applications.filter((a) => a.stage === "PLACED").length}</div>
-          <div className="text-slate-300">Placed</div>
-        </div>
-      </div>
-      <div className="flex gap-4 w-full">
-        {stages.map((stage) => (
-          <div
-            key={stage}
-            className="flex-1 bg-slate-100 rounded-lg p-4 min-h-[400px] border border-slate-200"
-            onDragOver={(e) => e.preventDefault()}
-            onDrop={() => handleDrop(stage)}
-          >
-            <div className="font-semibold mb-2 text-slate-700">{stage}</div>
-            <div className="flex flex-col gap-2">
-              {grouped[stage].map((app) => (
-                <div
-                  key={app.id}
-                  className="bg-white border border-slate-300 rounded p-3 shadow cursor-move"
-                  draggable
-                  onDragStart={() => handleDragStart(app.id)}
+      </section>
+
+      {activeView === "hr" && (
+        <section className="mx-auto grid max-w-7xl gap-6 px-5 pb-10 sm:px-8 xl:grid-cols-[280px_1fr]">
+          <aside className="rounded-md border border-[#d7ddd3] bg-white p-4">
+            <h2 className="text-lg font-semibold">Jobs</h2>
+            <div className="mt-4 grid gap-3">
+              {jobs.map((job) => (
+                <button
+                  key={job.id}
+                  className={`rounded-md border p-3 text-left transition ${
+                    selectedJobId === job.id ? "border-[#1d684d] bg-[#e8f3ee]" : "border-[#dbe0d7] hover:border-[#9fa99c]"
+                  }`}
+                  onClick={() => setSelectedJobId(job.id)}
+                  type="button"
                 >
-                  <div className="font-bold">{app.candidateName}</div>
-                  <div className="text-xs text-slate-500">{app.candidateEmail}</div>
-                </div>
+                  <span className="block text-sm font-semibold">{job.title}</span>
+                  <span className="block text-xs text-[#657064]">{job.client}</span>
+                </button>
+              ))}
+            </div>
+          </aside>
+
+          <div className="rounded-md border border-[#d7ddd3] bg-white p-4">
+            <div className="flex flex-col gap-2 border-b border-[#e2e6df] pb-4 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <h2 className="text-xl font-semibold">{selectedJob.title}</h2>
+                <p className="text-sm text-[#667064]">
+                  {selectedJob.client} - {selectedJob.location} - {selectedJob.type}
+                </p>
+              </div>
+              <p className="font-mono text-sm text-[#174f3d]">{selectedJob.salary}</p>
+            </div>
+
+            <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {applications
+                .filter((application) => application.jobId === selectedJob.id)
+                .map((application) => (
+                  <article key={application.id} className="rounded-md border border-[#dbe0d7] bg-[#fbfcfa] p-4">
+                    <div className="flex items-start gap-3">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded bg-[#d6e8df] text-sm font-bold text-[#174f3d]">
+                        {initials(application.candidateName)}
+                      </div>
+                      <div className="min-w-0">
+                        <h3 className="font-semibold">{application.candidateName}</h3>
+                        <p className="truncate text-sm text-[#667064]">{application.email}</p>
+                      </div>
+                    </div>
+                    <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+                      <span className="rounded bg-white p-2 text-[#667064]">Fit: <strong className="text-[#17201b]">{application.fitScore}%</strong></span>
+                      <span className="rounded bg-white p-2 text-[#667064]">Exp: <strong className="text-[#17201b]">{application.experience}</strong></span>
+                    </div>
+                    <p className="mt-3 truncate text-sm text-[#667064]">{application.resumeName}</p>
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      {stages.map((stage) => (
+                        <button
+                          key={stage}
+                          className={`rounded px-2.5 py-1.5 text-xs font-semibold ${
+                            application.stage === stage ? "bg-[#214538] text-white" : "bg-[#eef1eb] text-[#566056] hover:bg-[#dfe6dc]"
+                          }`}
+                          onClick={() => updateStage(application.id, stage)}
+                          type="button"
+                        >
+                          {stage}
+                        </button>
+                      ))}
+                    </div>
+                  </article>
+                ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {activeView === "candidate" && (
+        <section className="mx-auto grid max-w-7xl gap-6 px-5 pb-10 sm:px-8 lg:grid-cols-[0.9fr_1.1fr]">
+          <form className="rounded-md border border-[#d7ddd3] bg-white p-5" onSubmit={applyForJob}>
+            <h2 className="text-xl font-semibold">Apply for a job</h2>
+            <div className="mt-5 grid gap-4">
+              <label className="grid gap-2 text-sm font-medium">
+                Job
+                <select className="rounded-md border border-[#cbd3c8] bg-white px-3 py-2" value={selectedJobId} onChange={(event) => setSelectedJobId(event.target.value)}>
+                  {jobs.map((job) => (
+                    <option key={job.id} value={job.id}>
+                      {job.title} - {job.client}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="grid gap-2 text-sm font-medium">
+                Full name
+                <input className="rounded-md border border-[#cbd3c8] px-3 py-2" required value={candidateName} onChange={(event) => setCandidateName(event.target.value)} />
+              </label>
+              <label className="grid gap-2 text-sm font-medium">
+                Email
+                <input className="rounded-md border border-[#cbd3c8] px-3 py-2" required type="email" value={candidateEmail} onChange={(event) => setCandidateEmail(event.target.value)} />
+              </label>
+              <label className="grid gap-2 text-sm font-medium">
+                Experience
+                <input className="rounded-md border border-[#cbd3c8] px-3 py-2" placeholder="3 years" value={experience} onChange={(event) => setExperience(event.target.value)} />
+              </label>
+              <label className="grid gap-2 text-sm font-medium">
+                Resume
+                <input
+                  className="rounded-md border border-dashed border-[#9fac9a] bg-[#fbfcfa] px-3 py-2 text-sm"
+                  type="file"
+                  accept=".pdf,.doc,.docx"
+                  onChange={(event) => setResumeName(event.target.files?.[0]?.name ?? "")}
+                />
+              </label>
+              <button className="rounded-md bg-[#214538] px-4 py-2.5 font-semibold text-white hover:bg-[#174f3d]" type="submit">
+                Submit application
+              </button>
+            </div>
+          </form>
+
+          <div className="rounded-md border border-[#d7ddd3] bg-white p-5">
+            <h2 className="text-xl font-semibold">Open jobs</h2>
+            <div className="mt-5 grid gap-4">
+              {jobs.map((job) => (
+                <article key={job.id} className="rounded-md border border-[#dbe0d7] p-4">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                      <h3 className="font-semibold">{job.title}</h3>
+                      <p className="text-sm text-[#667064]">{job.client} - {job.location}</p>
+                    </div>
+                    <p className="font-mono text-sm text-[#174f3d]">{job.salary}</p>
+                  </div>
+                  <p className="mt-3 text-sm text-[#536057]">{job.summary}</p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {job.skills.map((skill) => (
+                      <span key={skill} className="rounded bg-[#eef1eb] px-2 py-1 text-xs font-semibold text-[#526056]">
+                        {skill}
+                      </span>
+                    ))}
+                  </div>
+                </article>
               ))}
             </div>
           </div>
-        ))}
-      </div>
-    </div>
-  );
-}
+        </section>
+      )}
 
-// Portal 2: Client Vacancy Management
-function ClientPortal({ jobOrders, onSubmit }: { jobOrders: JobOrder[]; onSubmit: (data: { title: string; description: string; skillsRequired: string[]; vacanciesCount: number }) => void }) {
-  const [title, setTitle] = useState("");
-  const [vacancies, setVacancies] = useState(1);
-  const [skills, setSkills] = useState("");
-  const [description, setDescription] = useState("");
-  const [jobs, setJobs] = useState(jobOrders);
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    onSubmit({
-      title,
-      description,
-      skillsRequired: skills.split(",").map((s) => s.trim()).filter(Boolean),
-      vacanciesCount: vacancies,
-    });
-    setTitle("");
-    setVacancies(1);
-    setSkills("");
-    setDescription("");
-  };
-
-  return (
-    <div className="flex min-h-screen bg-slate-50 p-8 gap-8">
-      <form onSubmit={handleSubmit} className="w-1/3 bg-white rounded-lg shadow p-6 flex flex-col gap-4 border border-slate-200">
-        <h2 className="text-xl font-bold mb-2">Post New Job Order</h2>
-        <input
-          className="border p-2 rounded"
-          placeholder="Job Title"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          required
-        />
-        <input
-          className="border p-2 rounded"
-          type="number"
-          min={1}
-          placeholder="Vacancies"
-          value={vacancies}
-          onChange={(e) => setVacancies(Number(e.target.value))}
-          required
-        />
-        <input
-          className="border p-2 rounded"
-          placeholder="Skills (comma separated)"
-          value={skills}
-          onChange={(e) => setSkills(e.target.value)}
-          required
-        />
-        <textarea
-          className="border p-2 rounded"
-          placeholder="Job Description"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          required
-        />
-        <button type="submit" className="bg-indigo-600 text-white rounded p-2 font-semibold hover:bg-indigo-700">
-          Create Job Order
-        </button>
-      </form>
-      <div className="flex-1 bg-white rounded-lg shadow p-6 border border-slate-200">
-        <h2 className="text-xl font-bold mb-4">Active Job Orders</h2>
-        <div className="flex flex-col gap-4">
-          {jobs.length === 0 ? (
-            <div className="text-slate-500">No job orders found.</div>
-          ) : (
-            jobs.map((job) => (
-              <div key={job.id} className="border-b pb-3 mb-3">
-                <div className="font-semibold text-lg">{job.title}</div>
-                <div className="text-slate-500 text-sm mb-1">Vacancies: {job.vacanciesCount}</div>
-                <div className="flex gap-2 flex-wrap mb-1">
-                  {job.skillsRequired?.map((skill) => (
-                    <span key={skill} className="bg-slate-200 text-slate-700 px-2 py-1 rounded text-xs font-medium">
-                      {skill}
-                    </span>
-                  ))}
-                </div>
-                <div className="text-slate-400 text-xs">{job.description}</div>
+      {activeView === "client" && (
+        <section className="mx-auto max-w-7xl px-5 pb-10 sm:px-8">
+          <div className="rounded-md border border-[#d7ddd3] bg-white p-5">
+            <div className="flex flex-col gap-2 border-b border-[#e2e6df] pb-4 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <h2 className="text-xl font-semibold">Shortlisted candidates</h2>
+                <p className="text-sm text-[#667064]">Only candidates moved to Shortlisted by HR appear here.</p>
               </div>
-            ))
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
+              <span className="rounded bg-[#e8f3ee] px-3 py-1 text-sm font-semibold text-[#174f3d]">{shortlisted.length} ready for client review</span>
+            </div>
+            <div className="mt-5 overflow-x-auto">
+              <table className="w-full min-w-[760px] border-collapse text-left text-sm">
+                <thead>
+                  <tr className="border-b border-[#dbe0d7] text-[#667064]">
+                    <th className="py-3 pr-4 font-semibold">Candidate</th>
+                    <th className="py-3 pr-4 font-semibold">Job</th>
+                    <th className="py-3 pr-4 font-semibold">Experience</th>
+                    <th className="py-3 pr-4 font-semibold">Fit</th>
+                    <th className="py-3 pr-4 font-semibold">Resume</th>
+                    <th className="py-3 font-semibold">Applied</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {shortlisted.map((application) => {
+                    const job = findJob(jobs, application.jobId);
 
-// Portal 3: Candidate Document & Pipeline Tracking
-function CandidatePortal({ applications }: { applications: Application[] }) {
-  const steps = [
-    { label: "Profile Info", key: "profile" },
-    { label: "Identity Upload", key: "identity" },
-    { label: "Contract Signing", key: "contract" },
-  ];
-  const [activeStep, setActiveStep] = useState(0);
-
-  const currentStage = applications[0]?.stage ?? "APPLIED";
-  const stageIndex = ["APPLIED", "SOURCED", "INTERVIEWED", "SHORTLISTED", "PLACED"].indexOf(currentStage as string);
-
-  return (
-    <div className="flex min-h-screen bg-slate-50 p-8 gap-8">
-      <div className="w-1/3 bg-white rounded-lg shadow p-6 border border-slate-200">
-        <h2 className="text-xl font-bold mb-4">Onboarding Steps</h2>
-        <ol className="space-y-4">
-          {steps.map((step, idx) => (
-            <li key={step.key} className="flex items-center gap-3">
-              <span
-                className={`w-6 h-6 flex items-center justify-center rounded-full font-bold text-white ${
-                  idx === activeStep
-                    ? "bg-indigo-600"
-                    : idx < activeStep
-                    ? "bg-green-500"
-                    : "bg-slate-300"
-                }`}
-              >
-                {idx + 1}
-              </span>
-              <span className={idx === activeStep ? "font-semibold" : "text-slate-500"}>{step.label}</span>
-            </li>
-          ))}
-        </ol>
-        <div className="mt-8 flex gap-2">
-          <button
-            className="bg-slate-200 px-3 py-1 rounded"
-            onClick={() => setActiveStep((s) => Math.max(0, s - 1))}
-            disabled={activeStep === 0}
-          >
-            Back
-          </button>
-          <button
-            className="bg-indigo-600 text-white px-3 py-1 rounded"
-            onClick={() => setActiveStep((s) => Math.min(steps.length - 1, s + 1))}
-            disabled={activeStep === steps.length - 1}
-          >
-            Next
-          </button>
-        </div>
-      </div>
-      <div className="flex-1 bg-white rounded-lg shadow p-6 border border-slate-200">
-        <h2 className="text-xl font-bold mb-4">Your Application Pipeline</h2>
-        <div className="flex flex-col gap-4">
-          {applications.length === 0 ? (
-            <div className="text-slate-500">No active applications found.</div>
-          ) : (
-            applications.map((app) => (
-              <div key={app.id} className="border-b pb-3 mb-3">
-                <div className="font-semibold text-lg">{app.jobOrder?.title}</div>
-                <div className="text-slate-500 text-sm mb-2">
-                  Current Stage: <span className="font-bold">{app.stage}</span>
-                </div>
-                <div className="flex gap-1">
-                  {["APPLIED", "SOURCED", "INTERVIEWED", "SHORTLISTED", "PLACED"].map((stage, idx) => (
-                    <div
-                      key={stage}
-                      className={`flex-1 h-2 rounded ${
-                        idx <= stageIndex ? "bg-indigo-600" : "bg-slate-200"
-                      }`}
-                    />
-                  ))}
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// Root Router Controller - Client Component
-export default function HomePage({
-  applications,
-  jobOrders,
-}: {
-  applications: Application[];
-  jobOrders: JobOrder[];
-}) {
-  const [activeView, setActiveView] = useState<PortalView>("admin");
-  const [apps, setApps] = useState(applications);
-  const [jobs, setJobs] = useState(jobOrders);
-
-  const handleStageUpdate = async (id: string, newStage: Stage) => {
-    const { updateApplicationStageAction } = await import("./actions/server-actions");
-    await updateApplicationStageAction(id, newStage);
-    setApps(apps.map((a) => (a.id === id ? { ...a, stage: newStage } : a)));
-  };
-
-  const handleJobCreate = async (data: { title: string; description: string; skillsRequired: string[]; vacanciesCount: number }) => {
-    const { createJobOrderAction } = await import("./actions/server-actions");
-    const result = await createJobOrderAction({
-      clientCompanyId: "demo-company-id",
-      ...data,
-    });
-    setJobs([...jobs, { id: result.id, clientCompanyId: "demo-company-id", ...data }]);
-  };
-
-  return (
-    <div className="min-h-screen bg-white">
-      <nav className="bg-slate-800 text-white p-4 flex gap-4">
-        <button
-          onClick={() => setActiveView("admin")}
-          className={`px-4 py-2 rounded font-semibold transition-colors ${
-            activeView === "admin" ? "bg-indigo-600" : "hover:bg-slate-700"
-          }`}
-        >
-          View as Admin
-        </button>
-        <button
-          onClick={() => setActiveView("client")}
-          className={`px-4 py-2 rounded font-semibold transition-colors ${
-            activeView === "client" ? "bg-indigo-600" : "hover:bg-slate-700"
-          }`}
-        >
-          View as Client Company
-        </button>
-        <button
-          onClick={() => setActiveView("candidate")}
-          className={`px-4 py-2 rounded font-semibold transition-colors ${
-            activeView === "candidate" ? "bg-indigo-600" : "hover:bg-slate-700"
-          }`}
-        >
-          View as Job Candidate
-        </button>
-      </nav>
-      {activeView === "admin" && <AdminDashboard applications={apps} onDrop={handleStageUpdate} />}
-      {activeView === "client" && <ClientPortal jobOrders={jobs} onSubmit={handleJobCreate} />}
-      {activeView === "candidate" && <CandidatePortal applications={apps.filter((a) => a.candidateEmail === "demo@candidate.com")} />}
-    </div>
+                    return (
+                      <tr key={application.id} className="border-b border-[#edf0eb]">
+                        <td className="py-4 pr-4">
+                          <div className="flex items-center gap-3">
+                            <span className="flex h-9 w-9 items-center justify-center rounded bg-[#d6e8df] text-xs font-bold text-[#174f3d]">
+                              {initials(application.candidateName)}
+                            </span>
+                            <span>
+                              <strong className="block">{application.candidateName}</strong>
+                              <span className="text-[#667064]">{application.email}</span>
+                            </span>
+                          </div>
+                        </td>
+                        <td className="py-4 pr-4">{job?.title ?? "Unknown role"}</td>
+                        <td className="py-4 pr-4">{application.experience}</td>
+                        <td className="py-4 pr-4 font-mono text-[#174f3d]">{application.fitScore}%</td>
+                        <td className="py-4 pr-4">{application.resumeName}</td>
+                        <td className="py-4">{application.appliedAt}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      )}
+    </main>
   );
 }
