@@ -190,8 +190,8 @@ export default function HomePage() {
               HR
             </div>
             <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#687167]">Dummy data demo</p>
-              <h1 className="text-2xl font-semibold text-[#17201b]">Simple HRM</h1>
+              {/* <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#687167]">Dummy data demo</p> */}
+              <h1 className="text-2xl font-semibold text-[#17201b]">HumanCapital HRM</h1>
             </div>
           </div>
           <nav className="grid grid-cols-3 rounded-md border border-[#cad1c8] bg-[#eef1eb] p-1 text-sm font-medium">
